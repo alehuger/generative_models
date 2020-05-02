@@ -29,14 +29,15 @@ The GAN network was evaluated on the CIFAR-10 dataset.
 
 ![alt text](docs/true_cifar.png "CIFAR") 
 
-The following animation shows the inference of the VAE network after every epoch completion during 190 epochs.
+The following animation shows the inference of the DCGAN network after every epoch completion during 190 epochs.
 
 ![alt text](docs/generated-cifar.gif "CIFAR") 
+
 You can find the 190 original images in ``` /GAN/results/reconstructions ```
 
-The following figure shows a generation batch after training the GAN for 190 epochs.
+The following figure shows a generation batch after training the GAN for 178 epochs.
 
-![alt text](GAN/results/fake_samples_epoch_190.png "CIFAR") 
+![alt text](GAN/results/fake_samples_epoch_177.png "CIFAR") 
      
 ### Discussion
 
