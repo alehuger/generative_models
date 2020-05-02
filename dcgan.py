@@ -1,6 +1,11 @@
 import os
 from utils import *
 from model import DCGAN
+from torch.utils.tensorboard import SummaryWriter
+import argparse
+
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
 def GAN_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
@@ -38,9 +43,10 @@ def GAN_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
     #######################################################################
     #                       ** MODEL LOADING **
     #######################################################################
-
-    model = DCGAN(DEVICE, bs_size, loader_train, loader_test, loader_val, latent_dimension, nb_filter, lr_rate, path)
+    writer = SummaryWriter(log_dir='GAN/runs')
+    model = DCGAN(DEVICE, bs_size, loader_train, loader_test, loader_val, latent_dimension, nb_filter, lr_rate, path, writer)
     model.summary()
+    writer.close()
 
     #######################################################################
     #                       ** MODEL TRAINING **
@@ -49,26 +55,32 @@ def GAN_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
     generator_training_loss, discriminator_training_loss = model.perform_training(n_epochs)
     # plot(generator_training_loss, discriminator_training_loss, path + '/training_losses.png')
     model.save()
-    pass
 
 
 #######################################################################
 #                       ** PARAMETERS **
 #######################################################################
 PATH_RESULTS = 'GAN/results'
-
+neg_slope = -0.2
+image_size = 32*32
+nb_color = 3
 #######################################################################
 #                       ** HYPERPARAMETERS **
 #######################################################################
-num_epochs = 200
+
+num_epochs = 1
+batch_size = 64
+nb_filter = 32
 learning_rate = 0.0002
 latent_vector_size = 100
 
-neg_slope = -0.2
-nb_filter = 32
-batch_size = 64
-image_size = 32*32
-nb_color = 3
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", "--n_epochs", help="number of epochs")
+parser.add_argument("-bs", "--batch_size", help="batch size")
+parser.add_argument("-lr", "--learning_rate", help="learning rate")
+parser.add_argument("-vs", "--vector_size", help="latent vector size")
+
+args = parser.parse_args()
 
 
-GAN_training(PATH_RESULTS, batch_size, num_epochs, learning_rate, latent_vector_size)
+GAN_training(PATH_RESULTS, int(args.batch_size), int(args.n_epochs), float(args.learning_rate), int(args.vector_size))

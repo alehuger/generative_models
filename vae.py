@@ -1,6 +1,7 @@
 import os
 from utils import *
 from model import VAE
+from torch.utils.tensorboard import SummaryWriter
 
 
 def VAE_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
@@ -39,9 +40,11 @@ def VAE_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
     #######################################################################
     #                       ** MODEL LOADING **
     #######################################################################
-
+    writer = SummaryWriter()
     model = VAE(DEVICE, bs_size, loader_train, loader_test, latent_dimension,
-                low_size, middle_size, high_size, lr_rate, path)
+                low_size, middle_size, high_size, lr_rate, path, writer)
+
+    writer.close()
     model.summary()
 
     #######################################################################
@@ -49,19 +52,19 @@ def VAE_training(path, bs_size, n_epochs, lr_rate, latent_dimension):
     #######################################################################
 
     training_loss, testing_loss = model.perform_training(n_epochs)
-    # plot(training_loss, testing_loss, path + '/training_losses.png')
+    plot(training_loss, testing_loss, path + '/training_losses.png')
     model.save(path + '/VAE_model.pth')
 
 
 #######################################################################
 #                       ** PARAMETERS **
 #######################################################################
-path = 'results'
+custom_path = 'results'
 
 #######################################################################
 #                       ** HYPERPARAMETERS **
 #######################################################################
-num_epochs = 50
+num_epochs = 1
 learning_rate = 0.001
 batch_size = 64
 latent_dim = 10
@@ -70,4 +73,4 @@ low_size = 10 * 10
 middle_size = 20 * 20
 high_size = 28 * 28
 
-VAE_training(path, batch_size, num_epochs, learning_rate, latent_dim)
+VAE_training(custom_path, batch_size, num_epochs, learning_rate, latent_dim)

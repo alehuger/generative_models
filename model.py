@@ -1,9 +1,12 @@
+import numpy as np
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-import os
-from torchvision.utils import save_image
+
+from torchvision.utils import save_image, make_grid
+
 
 from utils import *
 
@@ -11,7 +14,7 @@ from utils import *
 class VAE(nn.Module):
 
     def __init__(self, device, batch_size, loader_train, loader_test, latent_dim,
-                 low_size, middle_size, high_size, learning_rate, path):
+                 low_size, middle_size, high_size, learning_rate, path, writer):
         super(VAE, self).__init__()
 
         self.device = device
@@ -37,6 +40,13 @@ class VAE(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self.to(device)
         self.path = path
+
+        self.images, _ = next(iter(self.loader_train))
+        self.grid = make_grid(self.images)
+        self.writer = writer
+
+        self.writer.add_image('images', self.grid, 0)
+        self.writer.add_graph(self, self.images)
 
     def encode(self, x):
         #######################################################################
@@ -127,9 +137,13 @@ class VAE(nn.Module):
                 KLD_loss += loss_2d[0].item()
                 NLL_loss += loss_2d[1].item()
                 self.optimizer.step()
+            kld_total_loss, nll_total_loss = [KLD_loss / len(self.loader_train.dataset),
+                                              NLL_loss / len(self.loader_train.dataset)]
 
-            total_loss_per_epoch_training.append([KLD_loss / len(self.loader_train.dataset),
-                                                  NLL_loss / len(self.loader_train.dataset)])
+            self.writer.add_scalar('kld loss', kld_total_loss, epoch)
+            self.writer.add_scalar('nll loss', nll_total_loss, epoch)
+
+            total_loss_per_epoch_training.append([kld_total_loss, nll_total_loss])
 
             total_loss_per_epoch_testing.append(self.test(epoch))
 
@@ -219,7 +233,7 @@ class Discriminator(nn.Module):
 
 class DCGAN():
     def __init__(self, device, batch_size, loader_train, loader_val, loader_testing,
-                 latent_vector_size, nb_filter, learning_rate, path, use_weights_init=True):
+                 latent_vector_size, nb_filter, learning_rate, path, writer, use_weights_init=True):
 
         self.generator = Generator(latent_vector_size, nb_filter, learning_rate).to(device)
         self.discriminator = Discriminator(nb_filter, learning_rate).to(device)
@@ -239,6 +253,14 @@ class DCGAN():
         self.latent_vector_size = latent_vector_size
         self.device = device
         self.path = path
+
+        self.images, _ = next(iter(self.loader_train))
+        self.grid = make_grid(self.images)
+        self.writer = writer
+
+        self.writer.add_image('images', self.grid, 0)
+        # self.writer.add_graph(self.generator)
+        # self.writer.add_graph(self.discriminator)
 
     def weights_init(self):
         pass
@@ -278,10 +300,11 @@ class DCGAN():
                 D_x = output.mean().item()
 
                 # train with fake
-                noise = torch.randn(self.batch_size, self.latent_vector_size, device=self.device)
+                noise = torch.randn(batch_size, self.latent_vector_size, device=self.device)
                 fake = self.generator(noise)
                 label.fill_(self.fake_label)
                 output = self.discriminator(fake.detach())
+
                 errD_fake = self.loss_function(output, label)
                 errD_fake.backward()
                 D_G_z1 = output.mean().item()
@@ -313,10 +336,15 @@ class DCGAN():
                 fake = self.generator(self.fixed_noise)
                 save_image(denorm(fake.cpu()).float(), self.path + '/fake_samples_epoch_%03d.png' % epoch)
 
-                train_losses_D.append(train_loss_D / len(self.loader_train))
-                train_losses_G.append(train_loss_G / len(self.loader_train))
+                discriminator_loss = train_loss_D / len(self.loader_train)
+                generator_loss = train_loss_G / len(self.loader_train)
+                train_losses_D.append(discriminator_loss)
+                train_losses_G.append(generator_loss)
 
-        return train_losses_G, train_losses_D
+                self.writer.add_scalar('discriminator loss', discriminator_loss, epoch)
+                self.writer.add_scalar('generator loss', generator_loss, epoch)
+
+        return np.array(train_losses_G), np.array(train_losses_D)
 
     def save(self):
 

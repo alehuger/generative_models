@@ -67,6 +67,6 @@ def plot(training_loss, testing_loss, save_path):
     plt.ylabel('loss')
     plt.title("Total Loss")
     plt.legend()
-    plt.show()
     plt.savefig(save_path)
+    plt.close()
 
